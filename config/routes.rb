@@ -1,63 +1,96 @@
-ActionController::Routing::Routes.draw do |map|
-  map.resources :reservations, :member => {:check_out => :get, :check_in => :get}
-  map.resources :documents
-  map.resources :equipment_objects
-  map.resources :equipment_models do |equipment_model|
-    equipment_model.resources :equipment_objects
+Reservations::Application.routes.draw do
+
+  root :to => 'catalog#index'
+
+  resources :documents,
+            :equipment_objects,
+            :requirements
+
+  resources :categories do
+    resources :equipment_models
   end
-  map.resources :categories do |category|
-    category.resources :equipment_models
+
+  resources :equipment_models do
+    resources :equipment_objects
   end
-  map.resources :users
-  
-  map.catalog '/catalog', :controller => 'catalog'
-  map.add_to_cart '/catalog/add_to_cart/:id', :controller => 'catalog', :action => 'add_to_cart'
-  map.remove_from_cart '/catalog/remove_from_cart/:id', :controller => 'catalog', :action => 'remove_from_cart'
-  map.empty_cart '/cart/empty', :controller => 'application', :action => 'empty_cart'
-  map.update_cart '/cart/update', :controller => 'application', :action => 'update_cart'
-  map.logout '/logout', :controller => 'application', :action => 'logout'
-  map.edit_app_config '/app_config/edit', :controller => 'app_config', :action => 'edit'
-  map.update_app_config '/app_config/update', :controller => 'app_config', :action => 'update'
 
-  # The priority is based upon order of creation: first created -> highest priority.
+  match '/import_users/import' => 'import_users#import_page', :via => :get, :as => :csv_import_page
+  match '/import_users/imported' => 'import_users#import', :via => :post, :as => :csv_imported
 
-  # Sample of regular route:
-  #   map.connect 'products/:id', :controller => 'catalog', :action => 'view'
-  # Keep in mind you can assign values other than :controller and :action
+  resources :users do
+    collection do
+      get :find
+    end
+  end
 
-  # Sample of named route:
-  #   map.purchase 'products/:id/purchase', :controller => 'catalog', :action => 'purchase'
-  # This route can be invoked with purchase_url(:id => product.id)
+  match '/catalog/search' => 'catalog#search', :as => :catalog_search
+  match '/markdown_help' => 'application#markdown_help', :as => :markdown_help
 
-  # Sample resource route (maps HTTP verbs to controller actions automatically):
-  #   map.resources :products
+  resources :reservations do
+    member do
+      get :checkout_email
+      get :checkin_email
+      put :renew
+    end
+    get :autocomplete_user_last_name, :on => :collection
+  end
 
-  # Sample resource route with options:
-  #   map.resources :products, :member => { :short => :get, :toggle => :post }, :collection => { :sold => :get }
+  match '/black_outs/flash_message' => 'black_outs#flash_message', :as => :flash_message
+  match '/black_outs/new_recurring' => 'black_outs#new_recurring', :as => :new_recurring_black_out
 
-  # Sample resource route with sub-resources:
-  #   map.resources :products, :has_many => [ :comments, :sales ], :has_one => :seller
-  
-  # Sample resource route with more complex sub-resources
-  #   map.resources :products do |products|
-  #     products.resources :comments
-  #     products.resources :sales, :collection => { :recent => :get }
-  #   end
+  resources :black_outs do
+    collection do
+      post :create_recurring
+    end
+    member do
+      get :flash_message
+      delete :destroy_recurring
+    end
+  end
 
-  # Sample resource route within a namespace:
-  #   map.namespace :admin do |admin|
-  #     # Directs /admin/products/* to Admin::ProductsController (app/controllers/admin/products_controller.rb)
-  #     admin.resources :products
-  #   end
+  # reservations views
+  match '/reservations/manage/:user_id' => 'reservations#manage', :as => :manage_reservations_for_user
+  match '/reservations/current/:user_id' => 'reservations#current', :as => :current_reservations_for_user
 
-  # You can have the root of your site routed with map.root -- just remember to delete public/index.html.
-  map.root :controller => "catalog"
 
-  # See how all your routes lay out with "rake routes"
+  # reservation checkout / check-in actions
+  match '/reservations/checkout/:user_id' => 'reservations#checkout', :via => :put, :as => :checkout
+  match '/reservations/check-in/:user_id' => 'reservations#checkin', :via => :put, :as => :checkin
 
-  # Install the default routes as the lowest priority.
-  # Note: These default routes make all actions in every controller accessible via GET requests. You should
-  # consider removing or commenting them out if you're using named routes and resources.
-  map.connect ':controller/:action/:id'
-  map.connect ':controller/:action/:id.:format'
+  match '/catalog/update_view' => 'catalog#update_user_per_cat_page', :as => :update_user_per_cat_page
+  match '/catalog' => 'catalog#index', :as => :catalog
+  match '/add_to_cart/:id' => 'catalog#add_to_cart', :via => :put, :as => :add_to_cart
+  match '/remove_from_cart/:id' => 'catalog#remove_from_cart', :via => :put, :as => :remove_from_cart
+  match '/cart/empty' => 'application#empty_cart', :via => :delete, :as => :empty_cart
+  match '/cart/update' => 'application#update_cart', :as => :update_cart
+
+  match '/reports/index' => 'reports#index', :as => :reports
+  match '/reports/:id/for_model' => 'reports#for_model', :as => :for_model_report
+  match '/reports/for_model_set' => 'reports#for_model_set', :as => :for_model_set_reports
+  match '/reports/update' => 'reports#update_dates', :as => :update_dates
+  match '/reports/generate' => 'reports#generate', :as => :generate_report
+
+  match '/:controller/:id/deactivate' => ':controller#deactivate', :via => :put, :as => 'deactivate'
+  match '/:controller/:id/activate' => ':controller#activate', :via => :put, :as => 'activate'
+
+  match '/logout' => 'application#logout', :as => :logout
+
+  match '/terms_of_service' => 'application#terms_of_service', :as => :tos
+
+  # yes, both of these are needed to override rails defaults of /controller/:id/edit
+  match '/app_configs/' => 'app_configs#edit', :as => :edit_app_configs
+  resources :app_configs, :only => [:update]
+
+  match '/new_admin_user' => 'application_setup#new_admin_user', :as => :new_admin_user
+  match '/create_admin_user' => 'application_setup#create_admin_user', :as => :create_admin_user
+  resources :application_setup, :only => [:new_admin_user, :create_admin_user]
+
+  match '/new_app_configs' => 'application_setup#new_app_configs', :as => :new_app_configs
+  match '/create_app_configs' => 'application_setup#create_app_configs', :as => :create_app_configs
+
+  match 'contact' => 'contact#new', :as => 'contact_us', :via => :get
+  match 'contact' => 'contact#create', :as => 'contact_us', :via => :post
+
+  match ':controller(/:action(/:id(.:format)))'
+
 end

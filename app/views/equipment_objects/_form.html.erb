@@ -1,20 +1,8 @@
-<% form_for @equipment_object do |f| %>
-  <%= f.error_messages %>
-  <% if @equipment_model %>
-    <%= f.hidden_field :equipment_model_id, :value => @equipment_model.id %>
-  <% else %>
-    <p>
-      <%= f.label :equipment_model_id %><br />
-      <%= f.select :equipment_model_id, EquipmentModel.select_options, :prompt => true %>
-    </p>
-  <% end %>
-  <p>
-    <%= f.label :name %><br />
-    <%= f.text_field :name %>
-  </p>
-  <p>
-    <%= f.label :serial %><br />
-    <%= f.text_field :serial %>
-  </p>
-  <p><%= f.submit "Submit" %></p>
+<%= simple_form_for @equipment_object, :html => { :class => "form-horizontal" } do |f| %>
+  <%= f.error_notification %>
+  <%= f.association :equipment_model, placeholder: 'Please select an equipment model...' %>
+  <%=f.input :name%>
+  <%=f.input :serial%>
+  <%=f.input :deleted_at, :as => :deleted, label: "Disabled"%>
+  <%= f.button :wrapped, :cancel => equipment_objects_path %> 
 <% end %>
