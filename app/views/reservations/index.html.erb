@@ -1,22 +1,5 @@
-<% title (current_user.can_checkout? ? "" : "Your ")+"Reservations" %>
+<% title (current_user.can_checkout? ? "" : "My ")+"Reservations" %>
 
-<table>
-  <tr>
-    <th>Reserver</th>
-    <th>Start Date</th>
-    <th>Due Date</th>
-    <th>Status</th>
-  </tr>
-  <% for reservation in @reservations %>
-    <tr>
-      <td><%=h reservation.reserver.name %></td>
-      <td><%=h reservation.start_date.to_date.to_s(:long) %></td>
-      <td><%=h reservation.due_date.to_date.to_s(:long) %></td>
-      <td><%=h reservation.status %></td>
-      <td><%= link_to "Show", reservation %></td>
-      <% if current_user.is_admin? %>
-        <td><%= link_to "Destroy", reservation, :confirm => 'Are you sure?', :method => :delete %></td>
-      <% end %>
-    </tr>
-  <% end %>
-</table>
+<%= render :partial => "main_page_nav_buttons" %>
+
+<%= render :partial => "reservations_list", :collection => @reservations_set %>

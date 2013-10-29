@@ -1,16 +1,16 @@
-<% form_for @category do |f| %>
-  <%= f.error_messages %>
-  <p>
-    <%= f.label :name %><br />
-    <%= f.text_field :name %>
-  </p>
-  <p>
-    <%= f.label :max_per_user, "Maximum per user (leave blank if unrestricted)" %><br />
-    <%= f.text_field :max_per_user, :class => 'number_input' %>
-  </p>
-  <p>
-    <%= f.label :max_checkout_length, "Maximum checkout length (leave blank if unrestricted)"%><br />
-    <%= f.text_field :max_checkout_length, :class => 'number_input' %> days
-  </p>
-  <p><%= f.submit "Submit" %></p>
-<% end %>
+<%= simple_form_for @category, :html => { :class => "form-horizontal" } do |f| %>
+  <%= f.error_notification %>
+  <%= f.input :name %>
+  <%= f.input :max_per_user, label: "Maximum per user", hint: "leave blank if unrestricted" %>
+  <%= f.input :max_checkout_length, label: "Maximum checkout length", hint: "leave blank if unrestricted" %>
+  <%= f.input :sort_order, :hint => "lowest at top" %>
+  <%= f.input :deleted_at, label: "Inactive", :as => :deleted %>
+  
+  <strong>Default Renewal Options</strong>
+  <%= f.input :max_renewal_times, label: 'Maximum number of times this item may be renewed', hint: 'Leave blank for unrestricted.' %>
+  <%= f.input :max_renewal_length, label: 'Maximum time allotted for each renewal period', hint: 'Default is zero. Actual renewal period will depend on availability.' %>
+  <%= f.input :renewal_days_before_due, label: 'How many days before the due date should the Renew button become available?', hint: 'Leave blank to give the option to renew at any time.' %>
+  
+  <%= f.error :base %>
+  <%= f.button :wrapped, :cancel => categories_path %> 
+<% end %>  
