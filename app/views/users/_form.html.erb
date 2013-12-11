@@ -1,51 +1,38 @@
-<% form_for @user do |f| %>
-  <%= f.error_messages %>
-  <p>
-    <%= f.label :login %><br />
-    <% if current_user and current_user.is_admin? %>
-      <%= f.text_field :login %>
-    <% else %>
-      <%= @user.login %>
-      <%= f.hidden_field :login, :value => @user.login %>
-    <% end %>
-  </p>
-  <p>
-    <%= f.label :first_name %><br />
-    <%= f.text_field :first_name %>
-  </p>
-  <p>
-    <%= f.label :last_name %><br />
-    <%= f.text_field :last_name %>
-  </p>
-  <p>
-    <%= f.label :nickname %><br />
-    <%= f.text_field :nickname %>
-  </p>
-  <p>
-    <%= f.label :phone %><br />
-    <%= f.text_field :phone %>
-  </p>
-  <p>
-    <%= f.label :email %><br />
-    <%= f.text_field :email %>
-  </p>
-  <p>
-    <%= f.label :affiliation, "Affiliation (including college, year, etc)" %><br />
-    <%= f.text_field :affiliation %>
-  </p>
-  <% if current_user and current_user.is_admin? %>
-    <p>
-      <%= f.label :is_banned %><br />
-      <%= f.check_box :is_banned %>
-    </p>
-    <p>
-      <%= f.label :is_checkout_person %><br />
-      <%= f.check_box :is_checkout_person %>
-    </p>
-    <p>
-      <%= f.label :is_admin %><br />
-      <%= f.check_box :is_admin %>
-    </p>
+<%= simple_form_for @user, :html => { :class => "form-horizontal" }, :remote => true do |f| %>
+  <%= f.error_notification %>
+
+  <% if current_user and ( current_user.is_admin?(:as => 'admin') or (current_user.can_checkout? and @user.id == NIL) ) %>
+    <%= f.input :login %>
+  <% else %>
+      <%= f.input :login, :readonly => true, :input_html => {:value => @user.login}%>
   <% end %>
-  <p><%= f.submit "Submit" %></p>
+
+  <%= f.input :first_name %>
+  <%= f.input :last_name %>
+  <%= f.input :nickname %>
+  <% if AppConfig.first.require_phone %>
+    <%= f.input :phone, required: true, hint: "format like (555) 555-5555" %>
+  <% else %>
+    <%= f.input :phone, hint: "format like (555) 555-5555" %>
+  <% end %>
+  <%= f.input :email %>
+  <%= f.input :affiliation, hint: "including college, year, etc"%>
+
+  <%= hidden_field_tag(:from_cart, false) %>
+
+  <%= render partial: 'terms_of_service/user_accepted', locals: {f: f}%>
+
+  <% if current_user && current_user.is_admin?(:as => 'admin') %>
+      <%# TODO: Make this a fancy box %>
+      <%= f.association :requirements, :collection => Requirement.all.map{|req| [req.description,req.id]}, :label => "Requirements user has satisfied"%>
+      <%= f.input :role, collection: ['normal', 'checkout', 'admin', 'banned'], placeholder: 'normal' %>
+      <%= f.input :deleted_at, label: "Disabled", :as => :deleted %>
+  <% end %>
+
+  <% if @user %>
+    <%= f.button :wrapped, cancel: @user %>
+  <% else %>
+    <%= f.button :wrapped, cancel: root_path %>
+  <% end %>
+
 <% end %>
