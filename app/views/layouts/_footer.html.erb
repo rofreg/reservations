@@ -1,0 +1,72 @@
+<hr />
+<div class="row">
+  <div id="footer" class="span12">
+
+    <div class="well">
+      <div class="row">
+        <%# INFO SECTION %>
+        <% if cannot? :change, :views %>
+          <div class="span8">
+        <% else %>
+          <div class="span5">
+        <% end %>
+          Powered by <a href="https://github.com/YaleSTC/reservations">Reservations</a>, an open source equipment reservation app.<br />
+          &copy; 2012 Yale Student Technology Collaborative
+          <div id="footer_feedback">
+            <hr>
+            <a href="https://docs.google.com/a/yale.edu/spreadsheet/viewform?formkey=dE8zTFprNVB4RTAwdURhWEVTTlpDQVE6MQ#gid=0">Provide feedback</a> (suggestions, issues, and bug reports)
+          </div>
+
+        </div>
+
+        <%# LINKS SECTION %>
+        <div class="span3">
+          <ul id="links_box" class="nav nav-list">
+            <li class="nav-header">Links</li>
+            <% if @app_configs # this is required to ensure that pages will render even if the user hasn't run the app:setup task %>
+              <li><%= link_to @app_configs.home_link_text, @app_configs.home_link_location %></li>
+            <% end %>
+            <li><%= link_to "Contact Us", contact_us_path %></li>
+            <li><%= link_to "Terms of Service", tos_path %></li>
+          </ul>
+        </div>
+
+        <%# VIEW AS DROPDOWN %>
+        <div class="span3" id = "view_as">
+          <% if can? :change, :views %>
+          <ul class="nav nav-list">
+            <li class="nav-header">View As:</li>
+            <div class="btn-group dropup">
+              <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#">
+              <%= get_role_name current_user.view_mode %>
+                <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu">
+                <% viewmode_array = ['admin','checkout','normal','banned'] %>
+                <% if can? :view_as, :superuser %>
+                  <%  viewmode_array << 'superuser' %>
+                <% end %>
+                <% viewmode_array.each do |role| %>
+                  <% if current_user.view_mode == role %>
+                    <li class = "active">
+                      <%= get_role_name role %>
+                    </li>
+                  <% else %>
+                    <li>
+                      <%= link_to get_role_name(role), {:view_mode => role}%>
+                    </li>
+                  <% end %>
+                <% end %>
+              </ul>
+            </div>
+          </ul>
+
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  </div>
+</div>
