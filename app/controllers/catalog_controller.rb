@@ -1,50 +1,69 @@
 class CatalogController < ApplicationController
+  helper :blackouts
+  layout 'application_with_sidebar'
+
+  before_filter :set_equipment_model, only: [:add_to_cart, :remove_from_cart]
+
+  # --------- before filter methods --------- #
+
+  def set_equipment_model
+    @equipment_model = EquipmentModel.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    logger.error("Attempt to add invalid equipment model #{params[:id]}")
+    flash[:notice] = "Invalid equipment_model"
+    redirect_to root_path
+  end
+
+  # --------- end before filter methods --------- #
+
+
   def index
-    @equipment_models_by_category = EquipmentModel.find(:all, :include => :category, :order => 'categories.name ASC, equipment_models.name ASC').group_by(&:category)  
-    #push accessories to bottom by removing and reinserting
-    @equipment_models_by_category[Category.find_by_name("Accessories")] = @equipment_models_by_category.delete(Category.find_by_name("Accessories"))
+    @reserver_id = session[:cart].reserver_id
   end
-  
+
   def add_to_cart
-    @equipment_model = EquipmentModel.find(params[:id])
-    cart.add_equipment_model(@equipment_model)
-    respond_to do |format|
-      format.html{redirect_to root_path}
-      format.js
-    end
-  rescue ActiveRecord::RecordNotFound 
-    logger.error("Attempt to add invalid equipment model #{params[:id]}") 
-    flash[:notice] = "Invalid equipment_model" 
-    redirect_to root_path
+    change_cart(:add_item, @equipment_model)
   end
-  
+
   def remove_from_cart
-    @equipment_model = EquipmentModel.find(params[:id])
-    cart.remove_equipment_model(@equipment_model)
+    change_cart(:remove_item, @equipment_model)
+  end
+
+  def update_user_per_cat_page
+    session[:user_per_cat_page] = params[:user_cat_items_per_page] if !params[:user_cat_items_per_page].blank?
     respond_to do |format|
       format.html{redirect_to root_path}
-      format.js
+      format.js{render action: "cat_pagination"}
     end
-  rescue ActiveRecord::RecordNotFound 
-    logger.error("Attempt to remove invalid equipment model #{params[:id]}") 
-    flash[:notice] = "Invalid equipment_model" 
-    redirect_to root_path
   end
-  
+
   def search
-    if params[:category].nil?
-      redirect_to catalog_path
+    if params[:query].blank?
+      redirect_to root_path and return
     else
-      #update dates
-      session[:cart].set_start_date(Date.civil(params[:cart][:"start_date(1i)"].to_i,params[:cart][:"start_date(2i)"].to_i,params[:cart][:"start_date(3i)"].to_i))
-      session[:cart].set_due_date(Date.civil(params[:cart][:"due_date(1i)"].to_i,params[:cart][:"due_date(2i)"].to_i,params[:cart][:"due_date(3i)"].to_i))
-    
-      @category = Category.find(params[:category])
-      @equipment_models = @category.equipment_models.select{|e| e.available?(cart.start_date..cart.due_date)}
-      @equipment_models_by_category = @equipment_models.sort_by(&:name).group_by(&:category)
-    
-      flash.now[:notice] = "The following #{@category.name.pluralize} are available from #{cart.start_date} to #{cart.due_date}:"
-      render :action => :index
+      @equipment_model_results = EquipmentModel.active.catalog_search(params[:query])
+      @category_results = Category.catalog_search(params[:query])
+      @equipment_object_results = EquipmentObject.catalog_search(params[:query])
+      render 'search_results' and return
     end
   end
+
+  private
+    # this method is called to either add or remove an item from the cart
+    # it takes either :add_item or :remove_item as an action variable,
+    # and adds or removes the equipment_model set from params{} in the before_filter.
+    # Finally, it renders the root page and runs the javascript to update the cart
+    # (or displays the appropriate errors)
+    def change_cart(action, item)
+      cart.send(action, item)
+
+      errors = Reservation.validate_set(cart.reserver, cart.cart_reservations)
+      flash[:error] = errors.to_sentence
+      flash[:notice] = "Cart updated."
+
+      respond_to do |format|
+        format.html{redirect_to root_path}
+        format.js{render action: "update_cart"}
+      end
+    end
 end

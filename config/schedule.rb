@@ -19,6 +19,15 @@
 
 # Learn more: http://github.com/javan/whenever
 
-every 1.day, :at => '4:30 am' do
-  rake "mailman"
+every 1.day, :at => '5:00 am' do
+  rake "send_upcoming_checkin_reminder"
+  rake "send_overdue_checkin_reminder"
+  
+  rake "delete_missed_reservations"
+  rake "deny_missed_requests"
 end
+
+every 1.hour do 
+  rake "send_reservation_notes"
+end
+
