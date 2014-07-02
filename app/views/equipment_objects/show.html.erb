@@ -1,26 +1,25 @@
-<% title "Equipment Object" %>
+<% title "Equipment Item for #{@equipment_object.equipment_model.name}" %>
 
 <p>
   <strong>Name:</strong>
-  <%=h @equipment_object.name %>
+  <%= @equipment_object.name %>
 </p>
 <% unless @equipment_object.serial.nil? or @equipment_object.serial == "" %>
   <p>
     <strong>Serial:</strong>
-    <%=h @equipment_object.serial %>
+    <%= @equipment_object.serial %>
   </p>
 <% end %>
 <p>
   <strong>Equipment Model:</strong>
-  <%=h @equipment_object.equipment_model.name %>
+  <%= link_to @equipment_object.equipment_model.name, @equipment_object.equipment_model %>
 </p>
 <p>
   <strong>Status:</strong>
-  <%=h @equipment_object.status %>
+  <%= @equipment_object.status %>
 </p>
-
-<p>
-  <%= link_to "Edit", edit_equipment_object_path(@equipment_object) %> |
-  <%= link_to "Destroy", @equipment_object, :confirm => 'Are you sure?', :method => :delete %> |
-  <%= link_to "View All", equipment_objects_path %>
-</p>
+<div class="form-actions">
+  <%= link_to "Edit", edit_equipment_object_path(@equipment_object), class: 'btn' %>
+  <%= link_to "Delete", @equipment_object, :confirm => 'Deleting this Equipment Item will delete all related reservations. Are you sure you want to do this?', :method => :delete, class: 'btn btn-danger' %>
+  <%= link_to "View All", equipment_objects_path, class: 'btn' %>
+</div>
