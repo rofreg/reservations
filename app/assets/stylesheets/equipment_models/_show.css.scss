@@ -1,0 +1,145 @@
+
+$border-att: 1px solid darken($bodyBackground, 20%);
+
+.num,.head {
+  text-align:center;
+}
+
+.reservation_calendar {
+  overflow: hidden;
+}
+
+#calendar-ul {
+  margin-left: 0px;
+  margin-bottom: 3px;
+  margin-top: 3px;
+}
+
+.calendar_cell {
+  border: $border-att;
+  border-radius: 3px;
+  width: 13%;
+  display: inline-block;
+  vertical-align:top;
+  background-color: rgba(0,255,0,0.5);
+  opacity: 0.9;
+  padding-top: 3px;
+  padding-bottom: 5px;
+ }
+
+.month {
+  margin-top:3px;
+}
+
+.calendar_cell:hover{
+  opacity:  1.0;
+  cursor: pointer;
+}
+
+.c-left {
+  float: left;
+}
+
+.c-right {
+  float: right;
+}
+
+.control {
+  cursor:pointer;
+  margin-left:3px;
+  margin-right: 3px;
+  opacity: 0.8;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.control:not(.disabled-control):hover{
+  opacity: 1.0;
+}
+
+.control:active{
+  color: black;
+}
+
+.lite {
+  opacity: 0.7;
+}
+
+.disabled-control {
+  opacity:0.2;
+  cursor:default;
+}
+
+.btn-large {
+	float: right;
+}
+
+.em_info {
+	position: relative;
+}
+
+.associated_em_box {
+	position: absolute;
+	bottom: 0;
+
+	img {
+		background: white;
+		@include img-outline;
+	}
+}
+
+.document {
+	font-size: $baseFontSize * 6;
+	line-height: $baseFontSize * 6;
+	color: $textColor;
+	&:hover {
+		text-decoration: none;
+		color: $textColor;
+	}
+}
+.image_box {
+	height: 260px;
+	overflow: hidden;
+	background: white;
+	@include img-outline;
+}
+
+.giant-numbers {
+	@include giant-number;
+}
+
+.label.label-success.eo-table {
+	font-size: $baseFontSize;
+	line-height: $baseLineHeight;
+}
+
+.subnav li h4 {
+	padding-top: 11px;
+	padding-bottom: 11px;
+	border-right: 1px solid #E5E5E5;
+	padding-right: 12px;
+	display: block;
+	line-height: 14px;
+}
+
+section {
+	padding-top: 86px;
+}
+
+a.not-qualified-icon-em {
+	position: absolute;
+	top: 3px;
+	right: 120px;
+	font-size: $baseFontSize * 3;
+	color: $btnWarningBackgroundHighlight;
+	@include warning-icon-drop-shadow;
+
+	&:hover, &:active {
+		text-decoration: none;
+		color: $btnWarningBackground;
+	}
+}

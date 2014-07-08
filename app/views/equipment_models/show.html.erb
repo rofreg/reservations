@@ -1,148 +1,217 @@
-<% title @equipment_model.category.name.singularize + ": "+@equipment_model.name %>
-<%= (link_to (image_tag @equipment_model.photos.first.data.url(:small), :class => 'product_small'), @equipment_model.photos.first.data.url, :target => '_blank' ) unless @equipment_model.photos.empty? %>
-<p>
-  <%= @equipment_model.formatted_description %>
-</p>
-<p>
-  <%= link_to_remote "[add to cart]", {:url => add_to_cart_path(@equipment_model)}, :href => add_to_cart_path(@equipment_model) %>
-</p>
+<% title @equipment_model.name %>
+<% subtitle Category.find(@equipment_model.category_id).name %>
 
-<% unless @equipment_model.accessories.empty? %>
-  <fieldset>
-    <legend>Recommended accessories:</legend>
-    <ul>
-      <% @equipment_model.accessories.each do |accessory| %>
-        <li><%= accessory.name %> <%= link_to_remote "[add to cart]", {:url => add_to_cart_path(accessory)}, :href => add_to_cart_path(accessory) %></li>
-      <% end %>
-    </ul>
-  </fieldset>
-<% end %>
-<fieldset>
-  <legend>Further details:</legend>
-  <p>
-    <strong>Late Fee:</strong>
-    <%=h number_to_currency(@equipment_model.late_fee) %> / day
-  </p>
-  <p>
-    <strong>Replacement Fee:</strong>
-    <%=h number_to_currency(@equipment_model.replacement_fee) %>
-  </p>
-  <% if current_user.is_admin? %>
-    <p>
-      <strong>Max Per User:</strong>
-      <%=h @equipment_model.maximum_per_user %>
-    </p>
-  <% end %>
-  <% if current_user.is_admin? %>
-    <p id="images">
-      <strong>Images:</strong>
-      <% if @equipment_model.documents.images.empty? %>
-        none
-        <% if current_user.is_admin? %>
-          <small><%= link_to_function "[add image]" do |document|
-            document.insert_html :bottom, :images, :partial => 'documents/add_image_form', :object => Document.new
-          end %></small>
-        <% end %>
-      <% else %>
-        <ul>
-          <% @equipment_model.documents.images.each do |document| %>
-            <li><%= link_to document.name, document.data.url %> <%= link_to "[x]", document, :confirm => 'Are you sure you want to delete this document?', :method => :delete %>
-            </li>
-          <% end %>
-          <% if current_user.is_admin? %>
-            <li style="list-style:none">
-              <small><%= link_to_function "[add image]" do |document|
-                document.insert_html :bottom, :images, :partial => 'documents/add_image_form', :object => Document.new
-              end %></small>
-            </li>
-          <% end %>
-        </ul>
-      <% end %>
-    </p>
-  <% end %>
-  <p id="documents">
-    <strong>Documentation:</strong>
-    <% if @equipment_model.documents.not_images.empty? %>
-      none
-      <% if current_user.is_admin? %>
-        <small><%= link_to_function "[add document]" do |document|
-          document.insert_html :bottom, :documents, :partial => 'documents/add_document_form', :object => Document.new
-        end %></small>
-      <% end %>
-    <% else %>
-      <ul>
-        <% @equipment_model.documents.not_images.each do |document| %>
-          <li><%= link_to document.name, document.data.url %> <%= link_to "[x]", document, :confirm => 'Are you sure you want to delete this document?', :method => :delete %>
-          </li>
-        <% end %>
-        <% if current_user.is_admin? %>
-          <li style="list-style:none">
-            <small><%= link_to_function "[add document]" do |document|
-              document.insert_html :bottom, :documents, :partial => 'documents/add_document_form', :object => Document.new
-            end %></small>
-          </li>
-        <% end %>
-      </ul>
+
+<!-- EQUIPMENT MODEL INFO BOX -->
+<div class="row em_info">
+  <div class="span3">
+  <% if @equipment_model.photo.exists? %>
+  <div class="image_box">
+    <%= link_to "#image_modal", :"data-toggle" => 'modal' do %>
+      <%= image_tag @equipment_model.photo.url(:large) %>
     <% end %>
-  </p>
-  <% if current_user.is_admin? %>
+    <div id="image_modal" class="modal hide fade">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">×</button>
+        <h3><%= @equipment_model.name %></h3>
+      </div>
+      <div class="modal-body">
+        <%= image_tag @equipment_model.photo.url(:original) %>
+      </div>
+    </div>
+  </div>
+
+  <% else %>
+      <%= image_tag "no-image-260.gif" %>
+  <% end %>
+  </div>
+
+
+  <div class="span6">
+    <div class="row">
+      <div class="span4">
+        <%= render :partial => 'calendar' %>
+      </div>
+
+      <div class="span2">
+        <%= render :partial => 'add_to_cart' %>
+      </div>
+    </div>
+    <div class="associated_em_box">
+      <div class="row">
+          <div class="span6">
+            <% unless @associated_equipment_models.empty? %>
+              <h3>You Might Also Like:</h3>
+            <% end %>
+          </div>
+        </div>
+        <div class="row">
+          <!-- associated equipment models -->
+          <% @associated_equipment_models.each do |em| %>
+            <div class="span1">
+              <%= link_to em do %>
+                <%= image_tag evaluate_img_presence(em), rel: 'popover', title: em.name, :"data-content" => em.description.truncate(100) %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+    </div>
+
+  </div>
+
+
+
+</div>
+
+<hr />
+<!-- SUBNAV SECTION -->
+<div id="subnavbar" class="subnav">
+  <ul class="nav nav-pills">
+    <li class="hide"><h4><a href="#"><%= @equipment_model.name.truncate(50) %></a></h4></li>
+    <li><a href="#description">Description</a></li>
+    <li><a href="#details">Details</a></li>
+    <% if @equipment_model.documentation.exists? %>
+      <li><a href="#documentation">Documentation</a></li>
+    <% end %>
+    <% if can? :manage, EquipmentModel %>
+      <li><a href="#items">Items</a></li>
+      <li><a href="#procedures">Procedures</a></li>
+    <% end %>
+  </ul>
+</div>
+<hr />
+<!-- SUBBODY SECTION -->
+
+<!-- DESCRIPTION -->
+<section id="description">
+  <h2>Description</h2><hr />
+    <% unless @equipment_model.description.nil? %>
+      <%= markdown(@equipment_model.description) %>
+    <% end %>
+</section>
+
+<!-- DETAILS -->
+<section id="details">
+  <h2>Details</h2><hr />
+  <!-- Title Row -->
+  <%= content_tag :div, :class => 'row' do %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <h4>Late Fee</h4>
+    <% end %>
+    <%= content_tag :div, :class => 'span3' do %>
+      <h4>Replacement Fee</h4>
+    <% end %>
+    <%= content_tag :div, :class => 'span2' do %>
+      <% if can? :manage, EquipmentModel %>
+        <h4>Max. Per User</h4>
+      <% end %>
+    <% end %>
+  <% end %>
+  <!-- Content Row -->
+  <%= content_tag :div, :class => 'row giant-numbers' do %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <%= number_to_currency(@equipment_model.late_fee) %> / day
+    <% end %>
+    <%= content_tag :div, :class => 'span3' do %>
+      <%= number_to_currency(@equipment_model.replacement_fee) %>
+    <% end %>
+    <%= content_tag :div, :class => 'span2' do %>
+      <%= @equipment_model.maximum_per_user if can? :manage, EquipmentModel %>
+    <% end %>
+  <% end %>
+</section>
+
+<!-- DOCUMENTATION -->
+<% if @equipment_model.documentation.exists? %>
+<section id="documentation">
+  <h2>Documentation</h2><hr />
+  <!-- Title Row -->
+  <%= content_tag :div, :class => 'row' do %>
+    <%= content_tag :div, :class => 'span3' do %>
+      <h4>
+        <%= (link_to @equipment_model.documentation_file_name, asset_paths.compute_public_path(@equipment_model.documentation.url, ""), target: "_blank") if @equipment_model.documentation.exists? %>
+      </h4>
+    <% end %>
+  <% end %>
+  <!-- Content Row -->
+  <%= content_tag :div, :class => 'row' do %>
+    <%= content_tag :div, :class => 'span2' do %>
+      <%= link_to asset_paths.compute_public_path(@equipment_model.documentation.url, ""), target: "_blank" do %>
+        <%= content_tag :i, nil, :class => 'icon-file document' %>
+      <% end %>
+    <% end %>
+  <% end %>
+  </section>
+<% end %>
+
+
+<!-- Requirements -->
+     <% if @equipment_model.model_restricted?(cart.reserver_id) %>
+      <section id="requirements">
+        <h2>Requirements</h2><hr/>
+            <%# TODO: Eventually requirements will be handled with special Requests, similar to how extended reservations are handled. %>
+            <p><%= Requirement.list_requirement_admins(current_user, @equipment_model) %></p>
+      </section>
+    <% end %>
+
+<!-- ITEMS -->
+<% if can? :manage, EquipmentModel %>
+  <section id="items">
+    <h2>Items</h2><hr />
+    <p>
+      <%= link_to "Create New " + @equipment_model.name.singularize.truncate(30) + " Item", new_equipment_model_equipment_object_path(@equipment_model), :class => 'btn' %>
+    </p>
     <p id="equipment_objects">
-      <strong>Equipment Objects:</strong>
-      <% if @equipment_model.equipment_objects.empty? %>
-        none
-        <small><%= link_to_function "[add equipment object]" do |document|
-          document.insert_html :bottom, :equipment_objects, :partial => 'equipment_objects/add_equipment_object_form', :object => EquipmentObject.new
-        end %></small>
-      <% else %>
-        <ul>
-          <% @equipment_model.equipment_objects.each do |equipment_object| %>
-            <li><%= link_to equipment_object.name, equipment_object %> (<%= equipment_object.status %>) <%= link_to "[x]", equipment_object, :confirm => 'Are you sure you want to delete this equipment object?', :method => :delete %>
-            </li>
-          <% end %>
-          <li style="list-style:none">
-            <small><%= link_to_function "[add equipment object]" do |document|
-              document.insert_html :bottom, :equipment_objects, :partial => 'equipment_objects/add_equipment_object_form', :object => EquipmentObject.new
-            end %></small>
-          </li>
-        </ul>
-      <% end %>
+        <%= render 'equipment_objects_table' %>
     </p>
-    <p>
-      <strong>Checkout Procedures:</strong>
-      <% if @equipment_model.checkout_procedures.nil? %>
-        none
+  </section>
+
+ <!-- PROCEDURES -->
+<section id="procedures">
+  <h2>Procedures</h2><hr />
+  <!-- Title Row -->
+  <%= content_tag :div, :class => 'row' do %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <p><h4>Check-Out</h4></p>
+    <% end %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <p><h4>Check-In</h4></p>
+    <% end %>
+  <% end %>
+
+  <!-- Content Row -->
+  <%= content_tag :div, :class => 'row' do %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <% if @equipment_model.checkout_procedures.empty? %>
+        <p>(none)</p>
       <% else %>
-        <ul>
+        <ol class="rectangle-list">
           <% @equipment_model.checkout_procedures.each do |checkout_procedure| %>
-            <li><%= checkout_procedure %></li>
+            <li><%= checkout_procedure.step %></li>
           <% end %>
-        </ul>
+        </ol>
       <% end %>
-    </p>
-    <p>
-      <strong>Checkin Procedures:</strong>
-      <% if @equipment_model.checkin_procedures.nil? %>
-        none
+    <% end %>
+    <%= content_tag :div, :class => 'span4' do %>
+      <% if @equipment_model.checkin_procedures.empty? %>
+        <p>(none)</p>
       <% else %>
-        <ul>
+        <ol class="rectangle-list">
           <% @equipment_model.checkin_procedures.each do |checkin_procedure| %>
-            <li><%= checkin_procedure %></li>
+            <li><%= checkin_procedure.step %></li>
           <% end %>
-        </ul>
+        </ol>
       <% end %>
-    </p>
+    <% end %>
   <% end %>
-</fieldset>
+  </section>
+<% end %>
 
-<!-- <p>
-  <%= link_to "Add new "+@equipment_model.name.singularize+" object", new_equipment_model_equipment_object_path(@equipment_model) %> | 
-  <%= link_to "View all "+@equipment_model.name.singularize+" objects", equipment_model_equipment_objects_path(@equipment_model) %>
-</p> -->
-
-<p>
-  <% if current_user.is_admin? %>
-    <%= link_to "Edit "+@equipment_model.category.name.singularize, edit_equipment_model_path(@equipment_model) %> |
-    <%= link_to "Destroy "+@equipment_model.category.name.singularize, @equipment_model, :confirm => 'Are you sure?', :method => :delete %> |
+<div class="form-actions">
+  <% if can? :manage, EquipmentModel %>
+    <%= link_to "Edit "+@equipment_model.name.truncate(30), edit_equipment_model_path(@equipment_model), :class => 'btn' %>
+    <%= link_to "Delete "+@equipment_model.name.truncate(30), @equipment_model, :confirm => 'Deleting this Equipment Model will delete all related Equipment Items and reservations. Are you sure you want to do this?', :method => :delete, :class => 'btn btn-danger' %>
   <% end %>
-  <%= link_to "View All "+@equipment_model.category.name.pluralize, category_equipment_models_path(@equipment_model.category) %>
-</p>
+  <%= link_to "View All "+ Category.find(@equipment_model.category_id)
+.name.pluralize.truncate(30), category_equipment_models_path(Category.find(@equipment_model.category_id)), :class => 'btn view_all' %>
+</div>

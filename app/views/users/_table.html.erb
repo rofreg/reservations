@@ -1,0 +1,41 @@
+<table id="table_users" class="datatable-wide table table-striped table-bordered">
+  <thead>
+  <tr>
+    <th>NetID</th>
+    <th>First Name</th>
+    <th>Nickname</th>
+    <th>Last Name</th>
+
+    <% if can? :view, :roles %>
+      <th>Role</th>
+    <% end %>
+    <% if can? :manage, User %>
+      <th class="no_sort"> </th>
+      <th class="no_sort"> </th>
+    <% end %>
+  </tr>
+  </thead>
+  <tbody>
+  <% for user in users %>
+    <tr>
+    <td><%= user.login %></td>
+    <td><%= link_to user.first_name, user %></td>
+    <td><%= link_to user.nickname, user %></td>
+    <td><%= link_to user.last_name, user %></td>
+    <% if can? :view, :roles %>
+      <td><%= user.role %></td>
+    <% end %>
+    <% if can? :manage, User %>
+      <td><%= link_to "Edit", edit_user_path(user), :class => "btn" %></td>
+      <td>
+        <% if user.deleted_at %>
+          <%= make_activate_btn(:users,user) %>
+        <% else %>
+          <%= make_deactivate_btn(:users,user) %>
+        <% end %>
+      </td>
+    <% end %>
+    </tr>
+  <% end %>
+  </tbody>
+</table>

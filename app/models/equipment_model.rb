@@ -1,84 +1,205 @@
 class EquipmentModel < ActiveRecord::Base
-  serialize :checkout_procedures
-  serialize :checkin_procedures
+  include ApplicationHelper
+
+  include Searchable
+  searchable_on(:name, :description)
+
+  nilify_blanks only: [:deleted_at]
+
+  has_paper_trail
+
+  attr_accessible :name, :category, :category_id, :description, :late_fee, :replacement_fee,
+      :max_per_user, :document_attributes, :deleted_at,
+      :checkout_procedures_attributes, :checkin_procedures_attributes, :photo,
+      :documentation, :max_renewal_times, :max_renewal_length, :renewal_days_before_due,
+      :associated_equipment_model_ids, :requirement_ids, :requirements
+
+  # table_name is needed to resolve ambiguity for certain queries with 'includes'
+  scope :active, where("#{table_name}.deleted_at is null")
+
+  ##################
+  ## Associations ##
+  ##################
+
   belongs_to :category
-  has_many :equipment_objects
+  has_and_belongs_to_many :requirements
+  has_many :equipment_objects, dependent: :destroy
   has_many :documents
-  #has_and_belongs_to_many :reservations
-  has_many :equipment_models_reservations
-  has_many :reservations, :through => :equipment_models_reservations
-  
-  #associates with itself for accessories/recommended related models
-  has_many :accessories_equipment_models, :foreign_key => :equipment_model_id
-  has_many :accessories, :through => :accessories_equipment_models
-  
-  validates_presence_of :name
-  validates_uniqueness_of :name
-  validates_presence_of :description
-  validates_numericality_of :late_fee
-  validates_numericality_of :replacement_fee
-  validates_numericality_of :max_per_user, :allow_nil => true
-  
-  attr_accessible :name, :category_id, :description, :late_fee, :replacement_fee, :max_per_user, :document_attributes, :accessory_ids, :checkout_procedures, :checkin_procedures
-  
+  has_many :reservations, dependent: :destroy
+  has_many :checkin_procedures, dependent: :destroy
+  accepts_nested_attributes_for :checkin_procedures, \
+                                reject_if: :all_blank, allow_destroy: true
+  has_many :checkout_procedures, dependent: :destroy
+  accepts_nested_attributes_for :checkout_procedures, \
+                                reject_if: :all_blank, allow_destroy: true
+
+  # Equipment Models are associated with other equipment models to help us recommend items that go together.
+  # Ex: a camera, camera lens, and tripod
+  has_and_belongs_to_many :associated_equipment_models,
+    class_name: "EquipmentModel",
+    association_foreign_key: "associated_equipment_model_id",
+    join_table: "equipment_models_associated_equipment_models"
+
+  ##################
+  ## Validations  ##
+  ##################
+
+  validates :name,
+            :description,
+            :category,     presence: true
+  validates :name,         uniqueness: true
+  validates :late_fee,     :replacement_fee,
+                           numericality: { greater_than_or_equal_to: 0 }
+  validates :max_per_user, numericality: { allow_nil: true, \
+                                              only_integer: true, \
+                                              greater_than_or_equal_to: 1 }
+  validates :max_renewal_length,
+            :max_renewal_times,
+            :renewal_days_before_due,  numericality: { allow_nil: true, only_integer: true, greater_than_or_equal_to: 0 }
+
+  validate :not_associated_with_self
+
+  def not_associated_with_self
+    unless self.associated_equipment_models.where(id: self.id).blank?
+      errors.add(:associated_equipment_models, "You cannot associate a model with itself. Please deselect " + self.name)
+    end
+  end
+
+  #################
+  ## Paperclip   ##
+  #################
+
+  has_attached_file :photo, #generates profile picture
+      styles: {
+        large: { geometry: "500x500", format: "png" },
+        medium: { geometry: "250x250", format: "png" },
+        small: { geometry: "150x150", format: "png" },
+        thumbnail: { geometry: "260x180", format: "png" } },
+      convert_options: {
+        large: '-background none -gravity center -extent 500x500',
+        medium: '-background none -gravity center -extent 250x250',
+        small: '-background none -gravity center -extent 150x150',
+        thumbnail: '-background none -gravity center -extent 260x180' },
+      url:  "/attachments/equipment_models/:attachment/:id/:style/:basename.:extension",
+      path: ":rails_root/public/attachments/equipment_models/:attachment/:id/:style/:basename.:extension",
+      default_url: "/fat_cat.jpeg",
+      preserve_files: true
+
+
+  has_attached_file :documentation, #generates document
+      content_type: 'application/pdf',
+      url: "/attachments/equipment_models/:attachment/:id/:style/:basename.:extension",
+      path: ":rails_root/public/attachments/equipment_models/:attachment/:id/:style/:basename.:extension",
+      preserve_files: true
+
+  validates_attachment_content_type :photo,
+      content_type: ["image/jpg", "image/png", "image/jpeg"],
+      message: "must be jpeg, jpg, or png."
+  validates_attachment_size         :photo,
+      less_than: 1.megabytes,
+      message: "must be less than 1 MB in size"
+  validates_attachment :documentation, content_type: { content_type: "application/pdf" }
+
+  Paperclip.interpolates :normalized_photo_name do |attachment, style|
+    attachment.instance.normalized_photo_name
+  end
+
+  def normalized_photo_name
+    "#{self.id}-#{self.photo_file_name.gsub( /[^a-zA-Z0-9_\.]/, '_')}"
+  end
+
+  ###################
+  ## Class Methods ##
+  ###################
+
+  #TODO: this appears to be dead code - verify and remove
+  def self.select_options
+    self.order('name ASC').collect{|item| [item.name, item.id]}
+  end
+
+  ######################
+  ## Instance Methods ##
+  ######################
+
   #inherits from category if not defined
   def maximum_per_user
     max_per_user || category.maximum_per_user
   end
-  
-  def self.select_options
-    self.find(:all, :order => 'name ASC').collect{|item| [item.name, item.id]}
+
+  def maximum_renewal_length
+    max_renewal_length || category.maximum_renewal_length
   end
-  
+
+  def maximum_renewal_times
+    max_renewal_times || category.maximum_renewal_times
+  end
+
+  def maximum_renewal_days_before_due
+    renewal_days_before_due || category.maximum_renewal_days_before_due
+  end
+
+  # TODO: This appears to be dead code, verify and delete
   def document_attributes=(document_attributes)
     document_attributes.each do |attributes|
       documents.build(attributes)
     end
   end
-  
-  def formatted_description
-    lines = self.description.split(/^/)
-    
-    nice_content = "<p>"
-    lines.each do |line|
-      nice_content += line + "<br />"
-    end
-    nice_content += "</p>"
-  end
-  
-  def photos
-    self.documents.images
-  end
-  
-  def available?(date_range)
-    overall_count = self.equipment_objects.size
-    date_range.each do |date|
-      available_on_date = available_count(date)
-      overall_count = available_on_date if available_on_date < overall_count
-      return false if overall_count == 0
-    end
-    overall_count
-  end
-  
-  def available_count(date=Date.today)
-    # get the total number of objects of this kind
-    # then subtract the total quantity currently checked out, reserved, or overdue
-    # TODO: the system does not account for early checkouts.
-        
-    overdue_reservations = Reservation.find(:all, :conditions => ["checked_out != NULL and checked_in = NULL and due_date < ?", date.to_time.utc])
-    overdue_count = 0
-    overdue_reservations.each do |overdue_reservation|
-      overdue_reservation.equipment_models_reservations.each do |equipment_models_reservation|
-        overdue_count += equipment_models_reservation.quantity if equipment_models_reservation.equipment_model == self
+
+  def num_available_from_source(start_date, due_date, source_reservations)
+    # get the number available in the given date range
+    # take an activerecord relation instead of using a database call
+    # for database query optimization purposes
+    # O(n) comparisons
+    max_num = self.equipment_objects.active.count - number_overdue
+    min_available = Float::INFINITY
+    start_date.to_date.upto(due_date.to_date) do |d|
+      available = max_num - source_reservations.reserved_on_date(d).count
+      return 0 if min_available <= 0
+      if min_available > available
+        min_available = available
       end
     end
-    
-    reserved_count = EquipmentModelsReservation.sum(:quantity, :include => :reservation, :conditions => ["equipment_model_id = ? AND reservations.start_date <= ? AND reservations.due_date >= ? AND reservations.checked_in IS NULL", self.id, date.to_time.utc, date.to_time.utc])
-    
-    self.equipment_objects.count - reserved_count - overdue_count
+    return min_available
   end
-  
+
+  def num_available(start_date, due_date)
+    # for if you just want the number available
+    relevant_reservations = Reservation.for_eq_model(self).
+      reserved_in_date_range(start_date.to_datetime, due_date.to_datetime).
+      not_returned;
+    num_available_from_source(start_date, due_date, relevant_reservations)
+  end
+  # Returns true if the reserver is ineligible to checkout the model.
+  def model_restricted?(reserver_id)
+    reserver = User.find(reserver_id)
+    self.requirements.each do |em_req|
+      unless reserver.requirements.include?(em_req)
+        return true
+      end
+    end
+    return false
+  end
+
+  # Returns the number of overdue objects for a given model,
+  # as long as they have been checked out.
+  def number_overdue
+    Reservation.overdue.for_eq_model(self).size
+  end
+
+
+  def available_count(date)
+    # get the total number of objects of this kind
+    # then subtract the total quantity currently reserved, checked-out, and overdue
+    total = equipment_objects.active.count
+    reserved = Reservation.reserved_on_date(date).not_returned.for_eq_model(self).count
+    total - reserved - number_overdue
+  end
+
   def available_object_select_options
-    self.equipment_objects.select{|e| e.available?}.sort_by(&:name).collect{|item| "<option value=#{item.id}>#{item.name}</option>"}
+    self.equipment_objects.active.select{|e| e.available?}\
+        .sort_by(&:name)\
+        .collect{|item| "<option value=#{item.id}>#{item.name}</option>"}\
+        .join.html_safe
   end
+
 end
